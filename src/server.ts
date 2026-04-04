@@ -171,8 +171,12 @@ class MicrosoftGraphServer {
       app.use(express.json());
       app.use(express.urlencoded({ extended: true }));
 
-      // Log all incoming requests
+      // Log incoming requests (skip health check polls)
       app.use((req, res, next) => {
+        if (req.method === 'GET' && req.url === '/' && !req.headers.authorization) {
+          next();
+          return;
+        }
         const user = extractEmailFromToken(req.headers.authorization);
         logger.info(`${req.method} ${req.url}`, {
           user,
