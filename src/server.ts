@@ -68,7 +68,15 @@ class MicrosoftGraphServer {
   private accountNames: string[] = [];
 
   // Two-leg PKCE: stores client's code_challenge and server's code_verifier, keyed by OAuth state
-  private pkceStore: Map<string, { clientCodeChallenge: string; clientCodeChallengeMethod: string; serverCodeVerifier: string }> = new Map();
+  private pkceStore: Map<
+    string,
+    {
+      clientCodeChallenge: string;
+      clientCodeChallengeMethod: string;
+      serverCodeVerifier: string;
+      createdAt: number;
+    }
+  > = new Map();
 
   constructor(authManager: AuthManager, options: CommandOptions = {}) {
     this.authManager = authManager;
@@ -317,12 +325,13 @@ class MicrosoftGraphServer {
             clientCodeChallenge,
             clientCodeChallengeMethod: clientCodeChallengeMethod || 'S256',
             serverCodeVerifier,
+            createdAt: Date.now(),
           });
 
-          // Clean up old entries (older than 10 minutes)
+          // Clean up entries older than 10 minutes
           const now = Date.now();
-          for (const [key, _value] of this.pkceStore) {
-            if (this.pkceStore.size > 1000) {
+          for (const [key, value] of this.pkceStore) {
+            if (now - value.createdAt > 10 * 60 * 1000) {
               this.pkceStore.delete(key);
             }
           }
@@ -614,7 +623,10 @@ class MicrosoftGraphServer {
           try {
             if (req.microsoftAuth) {
               await requestContext.run(
-                { accessToken: req.microsoftAuth.accessToken, refreshToken: req.microsoftAuth.refreshToken },
+                {
+                  accessToken: req.microsoftAuth.accessToken,
+                  refreshToken: req.microsoftAuth.refreshToken,
+                },
                 handler
               );
             } else {
@@ -623,7 +635,11 @@ class MicrosoftGraphServer {
           } catch (error) {
             logger.error('Error handling MCP GET / request:', error);
             if (!res.headersSent) {
-              res.status(500).json({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null });
+              res.status(500).json({
+                jsonrpc: '2.0',
+                error: { code: -32603, message: 'Internal server error' },
+                id: null,
+              });
             }
           }
         }
@@ -651,7 +667,10 @@ class MicrosoftGraphServer {
           try {
             if (req.microsoftAuth) {
               await requestContext.run(
-                { accessToken: req.microsoftAuth.accessToken, refreshToken: req.microsoftAuth.refreshToken },
+                {
+                  accessToken: req.microsoftAuth.accessToken,
+                  refreshToken: req.microsoftAuth.refreshToken,
+                },
                 handler
               );
             } else {
@@ -660,7 +679,11 @@ class MicrosoftGraphServer {
           } catch (error) {
             logger.error('Error handling MCP POST / request:', error);
             if (!res.headersSent) {
-              res.status(500).json({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null });
+              res.status(500).json({
+                jsonrpc: '2.0',
+                error: { code: -32603, message: 'Internal server error' },
+                id: null,
+              });
             }
           }
         }
